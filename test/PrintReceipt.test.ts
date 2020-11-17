@@ -2,6 +2,7 @@ import {printReceipt} from '../src/PrintReceipt'
 
 describe('printReceipt', () => {
   it('should print receipt with promotion when print receipt', () => {
+    //given
     const tags = [
       'ITEM000001',
       'ITEM000001',
