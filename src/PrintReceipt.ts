@@ -1,11 +1,40 @@
 import {loadAllItems, loadPromotions} from './Dependencies'
 
 export function printReceipt(tags: string[]): string {
+  const items = deserializeTagsToItems(tags)
+  addDiscountToItems(items)
+  return getReceipt(items)
+}
+
+function addDiscountToItems(items: Item[]): void {
+  const validPromotions = getValidPromotion(items)
+  if(validPromotions !== undefined && validPromotions.type === "BUY_TWO_GET_ONE_FREE") {
+    for(const barcode of validPromotions.barcodes){
+      const itemWithPromotion = items.find((item) => item.barcode === barcode)
+      if(itemWithPromotion !== undefined)
+      {
+        itemWithPromotion.setDiscount(calculateDiscount(itemWithPromotion))
+      }
+    }
+  }
+}
+
+function calculateDiscount(item: Item): number{
+  return Math.floor(item.quantity / 3) * item.price
+}
+function getValidPromotion(items: Item[]): Promotion| undefined {
+  //since the only discount is buy two get one, did not consider other promotions here
+  const availablePromotions = loadPromotions()
+  const validPromotions = availablePromotions.filter((promotion) => promotion.barcodes.some((barcode) => items.some((item) => item.barcode === barcode)))
+  const buyTwoGetOnePromotion = validPromotions.filter((promotion) => promotion.type === 'BUY_TWO_GET_ONE_FREE')
+  if(buyTwoGetOnePromotion !== undefined && buyTwoGetOnePromotion.length > 0) {
+    return new Promotion(buyTwoGetOnePromotion[0].type, buyTwoGetOnePromotion[0].barcodes)
+  }
+  return undefined
+}
+
+function getReceipt(items: Item[]): string{
   let receipt = `***<store earning no money>Receipt ***\n`
-  let items = deserializeTagsToItems(tags)
-  items = getDiscount(items)
-
-
   let discount = 0
   let totalPrice = 0
   items.forEach((item) => {
@@ -19,33 +48,6 @@ Discounted prices：${discount.toFixed(2)}(yuan)
 **********************`
   return receipt
 }
-
-function getDiscount(items: Item[]): Item[] {
-  const validPromotions = getValidPromotion(items)
-  if(validPromotions !== undefined && validPromotions.type === "BUY_TWO_GET_ONE_FREE") {
-    for(const barcode of validPromotions.barcodes){
-      const itemWithPromotion = items.find((item) => item.barcode === barcode && item.quantity / 3 >= 1)
-      if(itemWithPromotion !== undefined)
-      {
-        itemWithPromotion.setDiscount(Math.floor(itemWithPromotion.quantity / 3) * itemWithPromotion.price)
-      }
-    }
-  }
-  return items
-}
-
-
-function getValidPromotion(items: Item[]): Promotion| undefined {
-  //since the only discount is buy two get one, did not consider other promotions here
-  const availablePromotions = loadPromotions()
-  const validPromotions = availablePromotions.filter((promotion) => promotion.barcodes.some((barcode) => items.some((item) => item.barcode === barcode)))
-  const buyTwoGetOnePromotion = validPromotions.filter((promotion) => promotion.type === 'BUY_TWO_GET_ONE_FREE')
-  if(buyTwoGetOnePromotion !== undefined && buyTwoGetOnePromotion.length > 0) {
-    return new Promotion(buyTwoGetOnePromotion[0].type, buyTwoGetOnePromotion[0].barcodes)
-  }
-  return undefined
-}
-
 
 function deserializeTagsToItems(tags: string[]): Item[] {
   const seperator = '-'
