@@ -8,7 +8,7 @@ export function printReceipt(tags: string[]): string {
 
 function addDiscountToItems(items: Item[]): void {
   const validPromotions = getValidPromotion(items)
-  if(validPromotions !== undefined && validPromotions.type === "BUY_TWO_GET_ONE_FREE") {
+  if(validPromotions !== undefined && validPromotions.type === 'BUY_TWO_GET_ONE_FREE') {
     for(const barcode of validPromotions.barcodes){
       const itemWithPromotion = items.find((item) => item.barcode === barcode)
       if(itemWithPromotion !== undefined)
