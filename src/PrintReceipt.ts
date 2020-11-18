@@ -1,12 +1,15 @@
 import {loadAllItems, loadPromotions} from './Dependencies'
 
 export function printReceipt(tags: string[]): string {
-  const items = deserializeTagsToItems(tags)
-  addDiscountToItems(items)
-  return getReceipt(items)
+  const items = convertTagsToItems(tags)
+  const itemsWithDiscountInformation = addDiscountToItems(items)
+  return getReceipt(itemsWithDiscountInformation)
 }
 
-function addDiscountToItems(items: Item[]): void {
+const availableItems = loadAllItems()
+const availablePromotions = loadPromotions()
+
+function addDiscountToItems(items: Item[]): Item[] {
   const validPromotions = getValidPromotion(items)
   if(validPromotions !== undefined && validPromotions.type === 'BUY_TWO_GET_ONE_FREE') {
     for(const barcode of validPromotions.barcodes){
@@ -17,6 +20,7 @@ function addDiscountToItems(items: Item[]): void {
       }
     }
   }
+  return [...items]
 }
 
 function calculateDiscount(item: Item): number{
@@ -24,7 +28,6 @@ function calculateDiscount(item: Item): number{
 }
 function getValidPromotion(items: Item[]): Promotion| undefined {
   //since the only discount is buy two get one, did not consider other promotions here
-  const availablePromotions = loadPromotions()
   const validPromotions = availablePromotions.filter((promotion) => promotion.barcodes.some((barcode) => items.some((item) => item.barcode === barcode)))
   const buyTwoGetOnePromotion = validPromotions.filter((promotion) => promotion.type === 'BUY_TWO_GET_ONE_FREE')
   if(buyTwoGetOnePromotion !== undefined && buyTwoGetOnePromotion.length > 0) {
@@ -49,30 +52,21 @@ Discounted prices：${discount.toFixed(2)}(yuan)
   return receipt
 }
 
-function deserializeTagsToItems(tags: string[]): Item[] {
-  const seperator = '-'
-  const avaliableItems = loadAllItems()
+function convertTagsToItems(tags: string[]): Item[] {
   const items: Item[] = []
-
   tags.forEach((tag) => {
-    const splited = tag.split(seperator)
-    if(splited !== undefined){
-      const barcode = splited[0]
-      let quantity = 1
-      if(splited.length > 1){
-        quantity = Number(splited[1])
-      }
-
-      const item = items.find(item => item.barcode === barcode)
+    const tagInformation = splitTagToBarcodeAndQuantity(tag)
+    if(tagInformation !== undefined){
+      const item = items.find(item => item.barcode === tagInformation.barcode)
       if(item !== undefined)
       {
-        item.quantity += quantity
+        item.quantity += tagInformation.quantity
       }
       else
       {
-        const newItem = avaliableItems.find(item => item.barcode === barcode)
+        const newItem = availableItems.find(item => item.barcode === tagInformation.barcode)
         if(newItem !== undefined){
-          items.push(new Item(newItem.barcode, newItem.name, newItem.unit, Number(newItem.price), quantity))
+          items.push(new Item(newItem.barcode, newItem.name, newItem.unit, Number(newItem.price), tagInformation.quantity))
         }
       }
     }
@@ -80,7 +74,20 @@ function deserializeTagsToItems(tags: string[]): Item[] {
   return items
 }
 
+function splitTagToBarcodeAndQuantity(tag: string): {barcode: string, quantity: number} | undefined{
+  const separator = '-'
+  const splited = tag.split(separator)
+  if(splited === undefined){
+    return undefined
+  }
 
+  const barcode = splited[0]
+  let quantity = 1
+  if(splited.length > 1){
+    quantity = Number(splited[1])
+  }
+  return {barcode: barcode, quantity: quantity}
+}
 class Item {
   barcode : string
   name: string
